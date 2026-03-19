@@ -1,129 +1,108 @@
-# app.py - Totul într-un singur fișier!
-from flask import Flask, render_template_string, request, redirect, session, flash
+# app.py - Fixed version, everything in one file
+from flask import Flask, request, redirect, session, flash, Response
 import json
 from datetime import datetime
 import os
 
 app = Flask(__name__)
-app.secret_key = 'cheie-secreta-pentru-sesiuni'
+app.secret_key = 'cheie-secreta-pentru-sesiuni-2024'
 
-# Creăm folder pentru date dacă nu există
+# Creăm folder pentru date
 DATA_DIR = 'date_chestionare'
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
-# ============== HTML TEMPLATE-URI ==============
+# ============== CSS STYLES ==============
+CSS = '''
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+.container { max-width: 900px; margin: 0 auto; }
+.card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 20px; }
+h1 { color: #333; margin-bottom: 20px; font-size: 28px; }
+h2 { color: #667eea; margin: 20px 0 15px 0; font-size: 22px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+h3 { color: #444; margin: 15px 0; font-size: 18px; }
+.btn { 
+    display: inline-block; padding: 12px 25px; 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+    color: white; text-decoration: none; border-radius: 25px; 
+    border: none; cursor: pointer; font-size: 16px; margin: 5px;
+    transition: transform 0.2s;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102,126,234,0.4); }
+.btn-green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+.btn-red { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
+.btn-orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.btn-blue { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.btn-gray { background: #6c757d; }
 
-BASE_TEMPLATE = '''
-<!DOCTYPE html>
-<html lang="ro">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}CORE VET{% endblock %}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 20px; }
-        h1 { color: #333; margin-bottom: 20px; font-size: 28px; }
-        h2 { color: #667eea; margin: 20px 0 15px 0; font-size: 22px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
-        .btn { 
-            display: inline-block; padding: 12px 25px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; text-decoration: none; border-radius: 25px; 
-            border: none; cursor: pointer; font-size: 16px; margin: 5px;
-            transition: transform 0.2s;
-        }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102,126,234,0.4); }
-        .btn-green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
-        .btn-red { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
-        .btn-orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-        .btn-blue { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
-        .menu-item { 
-            background: #f8f9fa; padding: 20px; border-radius: 10px; 
-            border-left: 4px solid #667eea; transition: all 0.3s;
-        }
-        .menu-item:hover { transform: translateX(5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        
-        .question { background: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 3px solid #667eea; }
-        .question p { font-weight: 600; margin-bottom: 10px; color: #444; }
-        
-        .scale { display: flex; gap: 10px; flex-wrap: wrap; }
-        .scale label { 
-            display: flex; flex-direction: column; align-items: center;
-            padding: 10px 15px; border: 2px solid #ddd; border-radius: 8px;
-            cursor: pointer; transition: all 0.3s;
-        }
-        .scale label:hover { border-color: #667eea; background: #f0f0ff; }
-        .scale input { margin-bottom: 5px; }
-        .scale small { font-size: 11px; color: #666; text-align: center; max-width: 80px; }
-        
-        .result-box { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; padding: 20px; border-radius: 10px; text-align: center; margin: 10px 0;
-        }
-        .result-score { font-size: 42px; font-weight: bold; }
-        
-        .riasec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
-        .riasec-item { background: #f8f9fa; padding: 15px; border-radius: 10px; text-align: center; }
-        .riasec-item.highlight { background: #667eea; color: white; transform: scale(1.05); }
-        .riasec-letter { font-size: 28px; font-weight: bold; color: #667eea; }
-        .riasec-item.highlight .riasec-letter { color: white; }
-        
-        .alert { padding: 15px; border-radius: 8px; margin: 15px 0; }
-        .alert-red { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .alert-green { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-yellow { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
-        
-        .progress-bar { width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px; overflow: hidden; margin: 10px 0; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); }
-        
-        .score-low { color: #dc3545; }
-        .score-med { color: #ffc107; }
-        .score-high { color: #28a745; }
-        
-        input[type="text"], input[type="password"], select, textarea {
-            width: 100%; padding: 12px; border: 2px solid #ddd; 
-            border-radius: 8px; font-size: 16px; margin: 5px 0 15px 0;
-        }
-        input:focus { outline: none; border-color: #667eea; }
-        
-        .nav { background: white; padding: 15px 30px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .nav a { color: #667eea; text-decoration: none; margin-left: 20px; font-weight: 500; }
-        
-        @media (max-width: 600px) {
-            .riasec-grid { grid-template-columns: repeat(2, 1fr); }
-            .scale label { padding: 8px 10px; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        {% if session.user %}
-        <div class="nav">
-            <strong style="color: #667eea;">📊 CORE VET</strong>
-            <div>
-                <a href="/">Acasă</a>
-                <a href="/logout">Logout ({{ session.user }})</a>
-            </div>
-        </div>
-        {% endif %}
-        
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for msg in messages %}
-                    <div class="alert alert-red">{{ msg }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        
-        {% block content %}{% endblock %}
-    </div>
-</body>
-</html>
+.menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
+.menu-item { background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #667eea; }
+.menu-item:hover { transform: translateX(5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+
+.question { background: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 3px solid #667eea; }
+.question p { font-weight: 600; margin-bottom: 10px; color: #444; }
+
+.scale { display: flex; gap: 10px; flex-wrap: wrap; }
+.scale label { 
+    display: flex; flex-direction: column; align-items: center;
+    padding: 10px 15px; border: 2px solid #ddd; border-radius: 8px;
+    cursor: pointer; transition: all 0.3s; background: white;
+}
+.scale label:hover { border-color: #667eea; background: #f0f0ff; }
+.scale input { margin-bottom: 5px; }
+.scale small { font-size: 11px; color: #666; text-align: center; max-width: 80px; }
+
+.result-box { 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+    color: white; padding: 20px; border-radius: 10px; text-align: center; margin: 10px 0;
+}
+.result-score { font-size: 42px; font-weight: bold; }
+
+.riasec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
+.riasec-item { background: #f8f9fa; padding: 15px; border-radius: 10px; text-align: center; border: 2px solid transparent; }
+.riasec-item.highlight { background: #667eea; color: white; transform: scale(1.05); border-color: #764ba2; }
+.riasec-letter { font-size: 28px; font-weight: bold; color: #667eea; }
+.riasec-item.highlight .riasec-letter { color: white; }
+
+.alert { padding: 15px; border-radius: 8px; margin: 15px 0; }
+.alert-red { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.alert-green { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.alert-yellow { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+
+.progress-bar { width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); }
+
+.score-low { color: #dc3545; }
+.score-med { color: #ffc107; }
+.score-high { color: #28a745; }
+
+input[type="text"], input[type="password"], select, textarea {
+    width: 100%; padding: 12px; border: 2px solid #ddd; 
+    border-radius: 8px; font-size: 16px; margin: 5px 0 15px 0;
+}
+input:focus { outline: none; border-color: #667eea; }
+
+.nav { background: white; padding: 15px 30px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+.nav a { color: #667eea; text-decoration: none; margin-left: 20px; font-weight: 500; }
+.nav a:hover { text-decoration: underline; }
+
+table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+th { background: #667eea; color: white; padding: 12px; text-align: left; }
+td { padding: 12px; border-bottom: 1px solid #ddd; }
+tr:hover { background: #f5f5f5; }
+
+.center { text-align: center; }
+.mt-20 { margin-top: 20px; }
+.mb-20 { margin-bottom: 20px; }
+
+@media (max-width: 600px) {
+    .riasec-grid { grid-template-columns: repeat(2, 1fr); }
+    .scale label { padding: 8px 10px; }
+    .nav { flex-direction: column; gap: 10px; }
+    .nav div { margin-top: 10px; }
+}
+</style>
 '''
 
 # ============== CHESTIONARE ==============
@@ -155,7 +134,7 @@ CHESTIONAR_ORIENTARE = {
             }
         },
         'B': {
-            'titlu': 'B. VALORI PROFESIONALE (12 itemi)',
+            'titlu': 'B. VALORI PROFESIONALE',
             'intrebari': {
                 'B1': 'Contează să am un venit stabil.',
                 'B2': 'Îmi doresc o meserie sigură.',
@@ -172,7 +151,7 @@ CHESTIONAR_ORIENTARE = {
             }
         },
         'C': {
-            'titlu': 'C. AUTOEFICACITATE (10 itemi)',
+            'titlu': 'C. AUTOEFICACITATE',
             'intrebari': {
                 'C1': 'Pot atinge obiective profesionale dacă muncesc.',
                 'C2': 'Pot învăța abilități noi.',
@@ -187,7 +166,7 @@ CHESTIONAR_ORIENTARE = {
             }
         },
         'D': {
-            'titlu': 'D. MANAGEMENTUL CARIEREI (14 itemi)',
+            'titlu': 'D. MANAGEMENTUL CARIEREI',
             'intrebari': {
                 'D1': 'Știu ce opțiuni am după absolvire.',
                 'D2': 'Am un plan pentru viitor.',
@@ -206,7 +185,7 @@ CHESTIONAR_ORIENTARE = {
             }
         },
         'E': {
-            'titlu': 'E. ANGAJABILITATE (12 itemi)',
+            'titlu': 'E. ANGAJABILITATE',
             'intrebari': {
                 'E1': 'Pot spune clar ce știu să fac.',
                 'E2': 'Pot face un CV.',
@@ -223,7 +202,7 @@ CHESTIONAR_ORIENTARE = {
             }
         },
         'F': {
-            'titlu': 'F. BARIERE ȘI SUPORT (10 itemi)',
+            'titlu': 'F. BARIERE ȘI SUPORT',
             'intrebari': {
                 'F1': 'Familia mă sprijină.',
                 'F2': 'Am o persoană care mă ghidează.',
@@ -377,7 +356,6 @@ CHESTIONAR_COMPETENTE = {
 # ============== FUNCȚII DE CALCUL ==============
 
 def calculeaza_orientare(r):
-    # RIASEC
     R = sum([int(r.get(f'A{i}',3)) for i in range(1,4)])
     I = sum([int(r.get(f'A{i}',3)) for i in range(4,7)])
     A = sum([int(r.get(f'A{i}',3)) for i in range(7,10)])
@@ -420,4 +398,30 @@ def calculeaza_tranzitie(r):
         'study': {'scor': med([f'T{i}' for i in range(11,16)]), 'nivel': niv(med([f'T{i}' for i in range(11,16)]))},
         'mobility': {'scor': med([f'T{i}' for i in range(16,21)]), 'nivel': niv(med([f'T{i}' for i in range(16,21)]))},
         'support': {'scor': med([f'T{i}' for i in range(21,26)]), 'nivel': niv(med([f'T{i}' for i in range(21,26)]))},
- 
+        'barriers': {'scor': med([f'T{i}' for i in range(26,31)]), 'nivel': niv(med([f'T{i}' for i in range(26,31)]))}
+    }
+
+def calculeaza_abandon(r):
+    def med(l): return round(sum([int(r.get(f'R{i}',3)) for i in l])/len(l), 2)
+    def niv_risc(s): return 'ridicat' if s>3.5 else 'mediu' if s>2.5 else 'scăzut'
+    
+    motiv = med([1,2,3,15])
+    sup = med([4,5,12,13,17])
+    dif = med([6,7,10,14,16,19])
+    bar = med([8,9,18])
+    intent = med([11,20])
+    
+    risc_gen = (6-motiv + 6-sup + dif + bar + intent*2)/5
+    
+    return {
+        'motivatie': {'scor': motiv, 'nivel': niv_risc(6-motiv)},
+        'suport': {'scor': sup, 'nivel': niv_risc(6-sup)},
+        'dificultati': {'scor': dif, 'nivel': niv_risc(dif)},
+        'bariere': {'scor': bar, 'nivel': niv_risc(bar)},
+        'intentie': {'scor': intent, 'nivel': niv_risc(intent)},
+        'risc_general': round(risc_gen, 2),
+        'alerta': intent>=4 or motiv<2
+    }
+
+def calculeaza_practica(r):
+    def med(l): return round(sum([i
