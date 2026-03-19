@@ -1,5 +1,5 @@
-# app.py - Fixed version, everything in one file
-from flask import Flask, request, redirect, session, flash, Response
+# app.py - Part 1/3 - Imports and CSS
+from flask import Flask, request, redirect, session, flash
 import json
 from datetime import datetime
 import os
@@ -7,12 +7,7 @@ import os
 app = Flask(__name__)
 app.secret_key = 'cheie-secreta-pentru-sesiuni-2024'
 
-# Creăm folder pentru date
-DATA_DIR = 'date_chestionare'
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
-
-# ============== CSS STYLES ==============
+# CSS styles
 CSS = '''
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -53,12 +48,6 @@ h3 { color: #444; margin: 15px 0; font-size: 18px; }
 .scale input { margin-bottom: 5px; }
 .scale small { font-size: 11px; color: #666; text-align: center; max-width: 80px; }
 
-.result-box { 
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-    color: white; padding: 20px; border-radius: 10px; text-align: center; margin: 10px 0;
-}
-.result-score { font-size: 42px; font-weight: bold; }
-
 .riasec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
 .riasec-item { background: #f8f9fa; padding: 15px; border-radius: 10px; text-align: center; border: 2px solid transparent; }
 .riasec-item.highlight { background: #667eea; color: white; transform: scale(1.05); border-color: #764ba2; }
@@ -77,10 +66,7 @@ h3 { color: #444; margin: 15px 0; font-size: 18px; }
 .score-med { color: #ffc107; }
 .score-high { color: #28a745; }
 
-input[type="text"], input[type="password"], select, textarea {
-    width: 100%; padding: 12px; border: 2px solid #ddd; 
-    border-radius: 8px; font-size: 16px; margin: 5px 0 15px 0;
-}
+input[type="text"] { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; margin: 5px 0 15px 0; }
 input:focus { outline: none; border-color: #667eea; }
 
 .nav { background: white; padding: 15px 30px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -104,9 +90,14 @@ tr:hover { background: #f5f5f5; }
 }
 </style>
 '''
+# Part 2/3 - Questionnaires
 
-# ============== CHESTIONARE ==============
+# Create data directory
+DATA_DIR = 'date_chestionare'
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
 
+# Chestionar 1: Orientare
 CHESTIONAR_ORIENTARE = {
     'titlu': '🎯 Chestionar de Orientare în Carieră (CORE VET)',
     'sectiuni': {
@@ -218,7 +209,9 @@ CHESTIONAR_ORIENTARE = {
         }
     }
 }
+# Part 3/3 - Routes and Main
 
+# Chestionar 2: Tranziție
 CHESTIONAR_TRANZITIE = {
     'titlu': '📋 Tranziție după Absolvire',
     'sectiuni': {
@@ -260,6 +253,7 @@ CHESTIONAR_TRANZITIE = {
     }
 }
 
+# Chestionar 3: Abandon
 CHESTIONAR_ABANDON = {
     'titlu': '⚠️ Risc de Abandon Școlar',
     'sectiuni': {
@@ -291,6 +285,7 @@ CHESTIONAR_ABANDON = {
     }
 }
 
+# Chestionar 4: Practică
 CHESTIONAR_PRACTICA = {
     'titlu': '💼 Practică Profesională și Job Shadowing',
     'sectiuni': {
@@ -322,6 +317,7 @@ CHESTIONAR_PRACTICA = {
     }
 }
 
+# Chestionar 5: Competențe
 CHESTIONAR_COMPETENTE = {
     'titlu': '🤝 Competențe Interpersonale pentru Angajabilitate',
     'sectiuni': {
@@ -353,9 +349,8 @@ CHESTIONAR_COMPETENTE = {
     }
 }
 
-# ============== FUNCȚII DE CALCUL ==============
-
-def calculeaza_orientare(r):
+# Calculation functions
+def calc_orientare(r):
     R = sum([int(r.get(f'A{i}',3)) for i in range(1,4)])
     I = sum([int(r.get(f'A{i}',3)) for i in range(4,7)])
     A = sum([int(r.get(f'A{i}',3)) for i in range(7,10)])
@@ -370,28 +365,20 @@ def calculeaza_orientare(r):
     def med(l): return round(sum([int(r.get(x,3)) for x in l])/len(l), 2)
     def niv(s): return 'scăzut' if s<2.5 else 'mediu' if s<3.5 else 'ridicat'
     
-    B = med([f'B{i}' for i in range(1,13)])
-    C_ef = med([f'C{i}' for i in range(1,11)])
-    D = med([f'D{i}' for i in range(1,15)])
-    Ef = med([f'E{i}' for i in range(1,13)])
-    F_sup = med(['F1','F2','F5','F7','F9'])
-    F_bar = med(['F3','F4','F6','F8','F10'])
-    
     return {
         'riasec': {'scoruri': scoruri, 'cod': cod, 'max': 15},
-        'valori': {'scor': B, 'nivel': niv(B)},
-        'autoeficacitate': {'scor': C_ef, 'nivel': niv(C_ef)},
-        'management': {'scor': D, 'nivel': niv(D)},
-        'angajabilitate': {'scor': Ef, 'nivel': niv(Ef)},
-        'suport': {'scor': F_sup, 'nivel': niv(F_sup)},
-        'bariere': {'scor': F_bar, 'nivel': niv(F_bar), 'alerta': F_bar>=4},
+        'valori': {'scor': med([f'B{i}' for i in range(1,13)]), 'nivel': niv(med([f'B{i}' for i in range(1,13)]))},
+        'autoeficacitate': {'scor': med([f'C{i}' for i in range(1,11)]), 'nivel': niv(med([f'C{i}' for i in range(1,11)]))},
+        'management': {'scor': med([f'D{i}' for i in range(1,15)]), 'nivel': niv(med([f'D{i}' for i in range(1,15)]))},
+        'angajabilitate': {'scor': med([f'E{i}' for i in range(1,13)]), 'nivel': niv(med([f'E{i}' for i in range(1,13)]))},
+        'suport': {'scor': med(['F1','F2','F5','F7','F9']), 'nivel': niv(med(['F1','F2','F5','F7','F9']))},
+        'bariere': {'scor': med(['F3','F4','F6','F8','F10']), 'nivel': niv(med(['F3','F4','F6','F8','F10'])), 'alerta': med(['F3','F4','F6','F8','F10'])>=4},
         'risc_abandon': int(r.get('F10',1))>=4
     }
 
-def calculeaza_tranzitie(r):
+def calc_tranzitie(r):
     def med(l): return round(sum([int(r.get(x,3)) for x in l])/len(l), 2)
     def niv(s): return 'scăzut' if s<2.5 else 'mediu' if s<3.5 else 'ridicat'
-    
     return {
         'plan': {'scor': med([f'T{i}' for i in range(1,6)]), 'nivel': niv(med([f'T{i}' for i in range(1,6)]))},
         'job_ready': {'scor': med([f'T{i}' for i in range(6,11)]), 'nivel': niv(med([f'T{i}' for i in range(6,11)]))},
@@ -401,7 +388,7 @@ def calculeaza_tranzitie(r):
         'barriers': {'scor': med([f'T{i}' for i in range(26,31)]), 'nivel': niv(med([f'T{i}' for i in range(26,31)]))}
     }
 
-def calculeaza_abandon(r):
+def calc_abandon(r):
     def med(l): return round(sum([int(r.get(f'R{i}',3)) for i in l])/len(l), 2)
     def niv_risc(s): return 'ridicat' if s>3.5 else 'mediu' if s>2.5 else 'scăzut'
     
@@ -423,5 +410,157 @@ def calculeaza_abandon(r):
         'alerta': intent>=4 or motiv<2
     }
 
-def calculeaza_practica(r):
-    def med(l): return round(sum([i
+def calc_practica(r):
+    def med(l): return round(sum([int(r.get(f'P{i}',3)) for i in l])/len(l), 2)
+    def niv(s): return 'scăzut' if s<2.5 else 'mediu' if s<3.5 else 'ridicat'
+    return {
+        'utilitate': {'scor': med([1,3,8,10,20]), 'nivel': niv(med([1,3,8,10,20]))},
+        'mentorat': {'scor': med([4,5,14,17]), 'nivel': niv(med([4,5,14,17]))},
+        'mediu': {'scor': med([6,7,9,18]), 'nivel': niv(med([6,7,9,18]))},
+        'shadowing': {'scor': med([11,12,13,15]), 'nivel': niv(med([11,12,13,15]))},
+        'organizare': {'scor': med([2,16]), 'nivel': niv(med([2,16]))}
+    }
+
+def calc_competente(r):
+    def med(l): return round(sum([int(r.get(f'S{i}',3)) for i in l])/len(l), 2)
+    def niv(s): return 'scăzut' if s<2.5 else 'mediu' if s<3.5 else 'ridicat'
+    return {
+        'comunicare': {'scor': med([1,2,7,12]), 'nivel': niv(med([1,2,7,12]))},
+        'echipa': {'scor': med([3,18]), 'nivel': niv(med([3,18]))},
+        'responsabilitate': {'scor': med([4,5,15,16]), 'nivel': niv(med([4,5,15,16]))},
+        'adaptabilitate': {'scor': med([9,10,11,19]), 'nivel': niv(med([9,10,11,19]))},
+        'autocontrol': {'scor': med([6,13,14,17]), 'nivel': niv(med([6,13,14,17]))},
+        'profesionalism': {'scor': med([8,20]), 'nivel': niv(med([8,20]))}
+    }
+
+# HTML helper
+def render_page(title, content, nav=True):
+    nav_html = ''
+    if nav and session.get('user'):
+        nav_html = f'''
+        <div class="nav">
+            <strong style="color: #667eea;">📊 CORE VET</strong>
+            <div>
+                <a href="/">Acasă</a>
+                <a href="/rezultate">Rezultate</a>
+                <a href="/logout">Logout ({session["user"]})</a>
+            </div>
+        </div>
+        '''
+    return f'''<!DOCTYPE html>
+<html lang="ro"><head><meta charset="UTF-8"><title>{title}</title>{CSS}</head>
+<body><div class="container">{nav_html}{content}</div></body></html>'''
+
+# Routes
+@app.route('/')
+def home():
+    if not session.get('user'):
+        return redirect('/login')
+    content = f'''
+    <div class="card center"><h1>Bun venit, {session["user"]}! 👋</h1>
+    <p style="color: #666; margin: 15px 0;">Alege un chestionar:</p></div>
+    <div class="menu-grid">
+        <div class="menu-item"><h3>🎯 Orientare în Carieră</h3><p style="font-size: 14px; color: #666;">Profil RIASEC, valori, autoeficacitate</p><a href="/chestionar/orientare" class="btn">Completează</a></div>
+        <div class="menu-item" style="border-left-color: #11998e;"><h3>📋 Tranziție după Absolvire</h3><p style="font-size: 14px; color: #666;">Pregătire pentru piața muncii</p><a href="/chestionar/tranzitie" class="btn btn-green">Completează</a></div>
+        <div class="menu-item" style="border-left-color: #eb3349;"><h3>⚠️ Risc de Abandon</h3><p style="font-size: 14px; color: #666;">Identificare factori de risc</p><a href="/chestionar/abandon" class="btn btn-red">Completează</a></div>
+        <div class="menu-item" style="border-left-color: #f093fb;"><h3>💼 Practică Profesională</h3><p style="font-size: 14px; color: #666;">Evaluare experiență practică</p><a href="/chestionar/practica" class="btn btn-orange">Completează</a></div>
+        <div class="menu-item" style="border-left-color: #4facfe;"><h3>🤝 Competențe Interpersonale</h3><p style="font-size: 14px; color: #666;">Abilități pentru angajare</p><a href="/chestionar/competente" class="btn btn-blue">Completează</a></div>
+    </div>'''
+    return render_page('Dashboard', content)
+
+@app.route('/login', methods=['GET','POST'])
+def login():
+    if request.method == 'POST':
+        user = request.form['user']
+        session['user'] = user
+        user_dir = os.path.join(DATA_DIR, user)
+        if not os.path.exists(user_dir):
+            os.makedirs(user_dir)
+        return redirect('/')
+    content = '''
+    <div class="card center" style="max-width: 400px; margin: 0 auto;"><h1>🔐 Intrare</h1>
+    <form method="POST"><input type="text" name="user" placeholder="Numele tău" required autofocus style="margin: 20px 0;">
+    <button type="submit" class="btn" style="width: 100%;">Intră în platformă</button></form>
+    <p style="margin-top: 20px; color: #666; font-size: 14px;">Doar introdu numele pentru a începe.</p></div>'''
+    return render_page('Login', content, nav=False)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
+
+@app.route('/chestionar/<tip>', methods=['GET','POST'])
+def chestionar(tip):
+    if not session.get('user'):
+        return redirect('/login')
+    chestionare = {'orientare': CHESTIONAR_ORIENTARE, 'tranzitie': CHESTIONAR_TRANZITIE, 
+                   'abandon': CHESTIONAR_ABANDON, 'practica': CHESTIONAR_PRACTICA, 'competente': CHESTIONAR_COMPETENTE}
+    if tip not in chestionare:
+        return redirect('/')
+    c = chestionare[tip]
+    if request.method == 'POST':
+        raspunsuri = request.form.to_dict()
+        rezultate = {'orientare': calc_orientare, 'tranzitie': calc_tranzitie, 
+                     'abandon': calc_abandon, 'practica': calc_practica, 'competente': calc_competente}[tip](raspunsuri)
+        data = {'tip': tip, 'data': datetime.now().isoformat(), 'raspunsuri': raspunsuri, 'rezultate': rezultate}
+        filename = f"{tip}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filepath = os.path.join(DATA_DIR, session['user'], filename)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return redirect(f'/rezultat/{tip}/{filename}')
+    
+    intrebari_html = ''
+    for cod_sect, sectiune in c['sectiuni'].items():
+        intrebari_html += f'<h2>{sectiune["titlu"]}</h2>'
+        for cod, text in sectiune['intrebari'].items():
+            intrebari_html += f'''<div class="question"><p>{cod}. {text}</p><div class="scale">
+                <label><input type="radio" name="{cod}" value="1" required><span>1</span><small>Deloc</small></label>
+                <label><input type="radio" name="{cod}" value="2"><span>2</span><small>Mai degrabă nu</small></label>
+                <label><input type="radio" name="{cod}" value="3"><span>3</span><small>Parțial</small></label>
+                <label><input type="radio" name="{cod}" value="4"><span>4</span><small>Mai degrabă da</small></label>
+                <label><input type="radio" name="{cod}" value="5"><span>5</span><small>Foarte</small></label>
+            </div></div>'''
+    
+    content = f'''<div class="card"><h1>{c['titlu']}</h1><form method="POST" id="form">{intrebari_html}
+    <div class="center mt-20"><button type="submit" class="btn" style="font-size: 18px; padding: 15px 40px;">Vezi rezultatele</button>
+    <a href="/" class="btn btn-gray">Anulează</a></div></form></div>
+    <script>document.getElementById('form').addEventListener('submit', function(e) {{
+        const all = document.querySelectorAll('.question'); let ok = true;
+        all.forEach(q => {{ if (!q.querySelector('input:checked')) ok = false; }});
+        if (!ok) {{ e.preventDefault(); alert('Răspunde la toate întrebările!'); }}
+    }});</script>'''
+    return render_page(c['titlu'], content)
+
+@app.route('/rezultat/<tip>/<filename>')
+def rezultat(tip, filename):
+    if not session.get('user'):
+        return redirect('/login')
+    filepath = os.path.join(DATA_DIR, session['user'], filename)
+    if not os.path.exists(filepath):
+        return redirect('/')
+    with open(filepath, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    r = data['rezultate']
+    
+    if tip == 'orientare':
+        riasec_items = ''.join([f'<div class="riasec-item {"highlight" if lit in r["riasec"]["cod"] else ""}"><div class="riasec-letter">{lit}</div><div style="font-size: 24px; font-weight: bold;">{scor}</div><small>/15</small></div>' for lit, scor in r['riasec']['scoruri'].items()])
+        content = f'''<h2>Profilul tău RIASEC: <span style="color: #667eea;">{r['riasec']['cod']}</span></h2>
+        <div class="riasec-grid">{riasec_items}</div>
+        <div class="menu-grid">
+            <div class="card center"><h4>Valori</h4><div class="result-score score-{r['valori']['nivel']}">{r['valori']['scor']}</div><div class="score-{r['valori']['nivel']}">{r['valori']['nivel']}</div></div>
+            <div class="card center"><h4>Autoeficacitate</h4><div class="result-score score-{r['autoeficacitate']['nivel']}">{r['autoeficacitate']['scor']}</div><div class="score-{r['autoeficacitate']['nivel']}">{r['autoeficacitate']['nivel']}</div></div>
+            <div class="card center"><h4>Management</h4><div class="result-score score-{r['management']['nivel']}">{r['management']['scor']}</div><div class="score-{r['management']['nivel']}">{r['management']['nivel']}</div></div>
+            <div class="card center"><h4>Angajabilitate</h4><div class="result-score score-{r['angajabilitate']['nivel']}">{r['angajabilitate']['scor']}</div><div class="score-{r['angajabilitate']['nivel']}">{r['angajabilitate']['nivel']}</div></div>
+        </div>
+        <div class="menu-grid">
+            <div class="card" style="border-left: 4px solid #28a745;"><h4>Suport</h4><div style="font-size: 36px; color: #28a745;">{r['suport']['scor']}</div><div>{r['suport']['nivel']}</div></div>
+            <div class="card" style="border-left: 4px solid #dc3545;"><h4>Bariere</h4><div style="font-size: 36px; color: #dc3545;">{r['bariere']['scor']}</div><div>{r['bariere']['nivel']}</div>{'<p style="color: #dc3545;"><strong>⚠️ Bariere semnificative!</strong></p>' if r['bariere']['alerta'] else ''}</div>
+        </div>{'<div class="alert alert-red"><strong>🚨 Alertă:</strong> Intenție de abandon!</div>' if r['risc_abandon'] else ''}'''
+    
+    elif tip == 'tranzitie':
+        labels = {'plan': '📋 Planificare', 'job_ready': '💼 Job Ready', 'study': '📚 Studii', 'mobility': '🌍 Mobilitate', 'support': '🤝 Suport', 'barriers': '⚠️ Bariere'}
+        items = ''.join([f'<div class="card center"><h4>{labels.get(k,k)}</h4><div style="font-size: 42px; font-weight: bold; color: {"#dc3545" if v["nivel"]=="scăzut" else "#ffc107" if v["nivel"]=="mediu" else "#28a745"}">{v["scor"]}</div><div>{v["nivel"]}</div></div>' for k,v in r.items()])
+        content = f'<h2>Pregătirea pentru tranziție</h2><div class="menu-grid">{items}</div>'
+    
+    elif tip == 'abandon':
+        bg = '#d4edda' if r['risc_general'] < 2.5 else '#fff3cd' if r['risc_general'] < 3.5 
